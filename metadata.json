@@ -1,0 +1,6 @@
+{
+  "name": "Calculadora de Vermífugos",
+  "description": "Ferramenta de uso interno para pet shop que calcula a dosagem e custo total de diferentes vermífugos com base no peso do animal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
