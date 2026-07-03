@@ -38,9 +38,14 @@ export default function App() {
   const [pesoCalculado, setPesoCalculado] = useState<number | null>(null);
   const [erroPeso, setErroPeso] = useState<string>(""); // Mensagem de erro para validação do peso do animal
 
-  // Filtros de busca / recomendação de dosagem
+  // Filtros de busca / recomendação de dosagem do fluxo rápido
   const [especiePet, setEspeciePet] = useState<"Cão" | "Gato">("Cão");
   const [tipoFiltro, setTipoFiltro] = useState<"Todos" | "Comprimido" | "Transdérmico">("Todos");
+  const [faixaEtaria, setFaixaEtaria] = useState<"Adulto" | "Filhote">("Adulto");
+  const [idadeDias, setIdadeDias] = useState<string>("");
+  const [trataVermeCoracao, setTrataVermeCoracao] = useState<boolean>(false);
+  const [trataGiardia, setTrataGiardia] = useState<boolean>(false);
+  const [amploEspectro, setAmploEspectro] = useState<boolean>(false);
 
   // Estado para controle de exibição do gerenciador de medicamentos
   const [mostrarGerenciador, setMostrarGerenciador] = useState(false);
@@ -52,6 +57,11 @@ export default function App() {
   const [novaQtdComprimidosCaixa, setNovaQtdComprimidosCaixa] = useState("");
   const [novoEspecie, setNovoEspecie] = useState<"Cão" | "Gato" | "Ambos">("Cão");
   const [novoTipo, setNovoTipo] = useState<"Comprimido" | "Transdérmico">("Comprimido");
+  const [novoIdadeMinimaDias, setNovoIdadeMinimaDias] = useState<string>("0");
+  const [novoExclusivoFilhotes, setNovoExclusivoFilhotes] = useState<boolean>(false);
+  const [novoTrataVermeCoracao, setNovoTrataVermeCoracao] = useState<boolean>(false);
+  const [novoTrataGiardia, setNovoTrataGiardia] = useState<boolean>(false);
+  const [novoAmploEspectro, setNovoAmploEspectro] = useState<boolean>(true);
   const [erroForm, setErroForm] = useState("");
 
   // Estados de feedback de backup
@@ -133,11 +143,41 @@ export default function App() {
     setPesoCalculado(pesoNum);
   };
 
-  // Limpar peso, erros, resultados e devolver foco ao campo de peso
+  // Cálculo reativo em tempo real para reduzir os cliques do atendente durante a digitação do peso
+  useEffect(() => {
+    const inputLimpo = pesoInput.trim();
+    if (!inputLimpo) {
+      setPesoCalculado(null);
+      setErroPeso("");
+      return;
+    }
+
+    const pesoNum = parseFloat(inputLimpo.replace(",", "."));
+    if (isNaN(pesoNum)) {
+      setPesoCalculado(null);
+      return;
+    }
+
+    if (pesoNum <= 0) {
+      setPesoCalculado(null);
+      return;
+    }
+
+    setErroPeso("");
+    setPesoCalculado(pesoNum);
+  }, [pesoInput]);
+
+  // Limpar peso, todos os filtros, erros, resultados e devolver foco ao campo de peso
   const handleLimpar = () => {
     setPesoInput("");
     setPesoCalculado(null);
     setErroPeso("");
+    setFaixaEtaria("Adulto");
+    setIdadeDias("");
+    setTrataVermeCoracao(false);
+    setTrataGiardia(false);
+    setAmploEspectro(false);
+    setTipoFiltro("Todos");
     setTimeout(() => {
       pesoInputRef.current?.focus();
     }, 50);
@@ -198,6 +238,7 @@ export default function App() {
     }
 
     const precoPorComprimido = precoCaixaNum / qtdComprimidosNum;
+    const idadeMinimaDiasNum = parseInt(novoIdadeMinimaDias.trim(), 10) || 0;
 
     const novoMed: Medicamento = {
       id: Date.now().toString(),
@@ -209,6 +250,11 @@ export default function App() {
       precoPorComprimido: precoPorComprimido,
       especie: novoEspecie,
       tipo: novoTipo,
+      idadeMinimaDias: idadeMinimaDiasNum,
+      exclusivoFilhotes: novoExclusivoFilhotes,
+      trataVermeCoracao: novoTrataVermeCoracao,
+      trataGiardia: novoTrataGiardia,
+      amploEspectro: novoAmploEspectro,
     };
 
     setMedicamentos((prev) => [...prev, novoMed]);
@@ -218,6 +264,11 @@ export default function App() {
     setNovaQtdComprimidosCaixa("");
     setNovoEspecie("Cão");
     setNovoTipo("Comprimido");
+    setNovoIdadeMinimaDias("0");
+    setNovoExclusivoFilhotes(false);
+    setNovoTrataVermeCoracao(false);
+    setNovoTrataGiardia(false);
+    setNovoAmploEspectro(true);
     setErroForm("");
 
     // Mantém o foco no primeiro campo de cadastro de forma limpa
@@ -289,17 +340,38 @@ export default function App() {
   const resultados = useMemo(() => {
     if (pesoCalculado === null) return [];
     
-    // Filtra medicamentos aplicáveis à espécie do pet e ao tipo de apresentação
+    // Filtra medicamentos aplicáveis à espécie do pet, faixa etária, idade em dias e propriedades clínicas
     const filtrados = medicamentos.filter((med) => {
-      // Filtra por espécie: se o pet for Cão, aceita "Cão" ou "Ambos". Se for Gato, aceita "Gato" ou "Ambos".
+      // 1. Filtra por espécie: se o pet for Cão, aceita "Cão" ou "Ambos". Se for Gato, aceita "Gato" ou "Ambos".
       const matchEspecie = especiePet === "Cão"
         ? (med.especie === "Cão" || med.especie === "Ambos")
         : (med.especie === "Gato" || med.especie === "Ambos");
         
-      // Filtra por apresentação: se "Todos", aceita qualquer um. Caso contrário, compara exatamente.
+      // 2. Filtra por apresentação: se "Todos", aceita qualquer um. Caso contrário, compara exatamente.
       const matchTipo = tipoFiltro === "Todos" || med.tipo === tipoFiltro;
 
-      return matchEspecie && matchTipo;
+      // 3. Filtra por faixa etária e limite de idade
+      let matchIdade = true;
+      if (faixaEtaria === "Adulto") {
+        // Se adulto: eliminar medicamentos exclusivos para filhotes
+        if (med.exclusivoFilhotes) {
+          matchIdade = false;
+        }
+      } else {
+        // Se filhote: utilizar a idade mínima cadastrada dos medicamentos para filtrar os resultados
+        const idadeEmDias = parseInt(idadeDias.trim(), 10);
+        if (!isNaN(idadeEmDias)) {
+          // Mostrar apenas medicamentos compatíveis com animais daquela idade ou mais velha
+          matchIdade = (med.idadeMinimaDias ?? 0) <= idadeEmDias;
+        }
+      }
+
+      // 4. Filtra por características clínicas desejadas (filtros opcionais)
+      const matchVermeCoracao = !trataVermeCoracao || !!med.trataVermeCoracao;
+      const matchGiardia = !trataGiardia || !!med.trataGiardia;
+      const matchAmploEspectro = !amploEspectro || !!med.amploEspectro;
+
+      return matchEspecie && matchTipo && matchIdade && matchVermeCoracao && matchGiardia && matchAmploEspectro;
     });
     
     const res = filtrados.map((med) => {
@@ -326,7 +398,18 @@ export default function App() {
       }
       return a.nome.localeCompare(b.nome);
     });
-  }, [pesoCalculado, medicamentos, temDescontoAtivo, especiePet, tipoFiltro]);
+  }, [
+    pesoCalculado,
+    medicamentos,
+    temDescontoAtivo,
+    especiePet,
+    tipoFiltro,
+    faixaEtaria,
+    idadeDias,
+    trataVermeCoracao,
+    trataGiardia,
+    amploEspectro
+  ]);
 
   // Encontra o menor preço para destacar
   const menorPreco = useMemo(() => {
@@ -377,11 +460,11 @@ export default function App() {
               </p>
             </div>
 
-            <form onSubmit={handleCalcular} className="flex flex-col gap-5">
-              {/* Seleção de Espécie (Cão ou Gato) */}
+            <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-5">
+              {/* 1. Espécie (Cão ou Gato) */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
-                  Espécie do Pet
+                  1. Espécie do Pet
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -409,52 +492,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Filtro de Formato (Comprimido ou Transdérmico) */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
-                  Tipo de Apresentação
-                </label>
-                <div className="grid grid-cols-3 gap-1 bg-[#f3f4f6] p-1 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setTipoFiltro("Todos")}
-                    className={`py-2 rounded-md font-medium text-xs text-center transition-all cursor-pointer border-none ${
-                      tipoFiltro === "Todos"
-                        ? "bg-white text-[#111827] shadow-xs font-bold"
-                        : "text-[#6b7280] hover:text-[#111827]"
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTipoFiltro("Comprimido")}
-                    className={`py-2 rounded-md font-medium text-xs text-center transition-all cursor-pointer border-none ${
-                      tipoFiltro === "Comprimido"
-                        ? "bg-white text-[#111827] shadow-xs font-bold"
-                        : "text-[#6b7280] hover:text-[#111827]"
-                    }`}
-                  >
-                    Comprimido
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTipoFiltro("Transdérmico")}
-                    className={`py-2 rounded-md font-medium text-xs text-center transition-all cursor-pointer border-none ${
-                      tipoFiltro === "Transdérmico"
-                        ? "bg-white text-[#111827] shadow-xs font-bold"
-                        : "text-[#6b7280] hover:text-[#111827]"
-                    }`}
-                  >
-                    Transdérmico
-                  </button>
-                </div>
-              </div>
-
-              {/* Peso Input */}
+              {/* 2. Peso Input */}
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="peso-animal" className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
-                  Peso do Animal (kg)
+                  2. Peso do Animal (kg)
                 </label>
                 <div className="relative">
                   <input
@@ -482,25 +523,152 @@ export default function App() {
                 )}
               </div>
 
-              {/* Botões de Ação */}
-              <div className="flex gap-2.5 mt-2">
-                <button
-                  type="submit"
-                  className="flex-1 h-12 bg-[#4f46e5] hover:bg-[#4f46e5]/95 text-white font-semibold rounded-lg shadow-sm transition-colors cursor-pointer text-center text-sm flex items-center justify-center gap-2"
-                >
-                  Calcular Orçamento
-                </button>
-                {(pesoInput || pesoCalculado !== null) && (
+              {/* 3. Faixa Etária */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
+                  3. Faixa Etária
+                </label>
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={handleLimpar}
-                    className="px-4 h-12 bg-neutral-100 hover:bg-neutral-200 text-[#6b7280] font-medium rounded-lg transition-colors cursor-pointer text-sm"
-                    title="Limpar campos"
+                    onClick={() => setFaixaEtaria("Adulto")}
+                    className={`h-11 rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      faixaEtaria === "Adulto"
+                        ? "bg-[#4f46e5]/10 border-[#4f46e5] text-[#4f46e5] shadow-xs font-bold"
+                        : "bg-white border-[#e5e7eb] text-[#374151] hover:bg-neutral-50/50"
+                    }`}
                   >
-                    Limpar
+                    <span>Adulto</span>
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setFaixaEtaria("Filhote")}
+                    className={`h-11 rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      faixaEtaria === "Filhote"
+                        ? "bg-[#4f46e5]/10 border-[#4f46e5] text-[#4f46e5] shadow-xs font-bold"
+                        : "bg-white border-[#e5e7eb] text-[#374151] hover:bg-neutral-50/50"
+                    }`}
+                  >
+                    <span>Filhote</span>
+                  </button>
+                </div>
               </div>
+
+              {/* 4. Idade em dias (Somente se Filhote) */}
+              <AnimatePresence initial={false}>
+                {faixaEtaria === "Filhote" && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0, marginTop: -8 }}
+                    animate={{ height: "auto", opacity: 1, marginTop: 0 }}
+                    exit={{ height: 0, opacity: 0, marginTop: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden flex flex-col gap-1.5"
+                  >
+                    <label htmlFor="idade-dias" className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
+                      4. Idade do Filhote (dias)
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="idade-dias"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Ex: 40"
+                        value={idadeDias}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          setIdadeDias(val);
+                        }}
+                        className="w-full h-11 px-4 bg-white border-2 border-[#e5e7eb] rounded-lg font-medium text-sm text-[#111827] focus:outline-hidden focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5] transition-all placeholder:text-neutral-400/40"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#6b7280] font-mono">
+                        dias
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* 5. Forma Farmacêutica (Tipo de Apresentação) */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
+                  5. Forma Farmacêutica
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-[#f3f4f6] p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setTipoFiltro("Todos")}
+                    className={`py-2 rounded-md font-medium text-xs text-center transition-all cursor-pointer border-none ${
+                      tipoFiltro === "Todos"
+                        ? "bg-white text-[#111827] shadow-xs font-bold"
+                        : "text-[#6b7280] hover:text-[#111827]"
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoFiltro("Comprimido")}
+                    className={`py-2 rounded-md font-medium text-xs text-center transition-all cursor-pointer border-none ${
+                      tipoFiltro === "Comprimido"
+                        ? "bg-white text-[#111827] shadow-xs font-bold"
+                        : "text-[#6b7280] hover:text-[#111827]"
+                    }`}
+                  >
+                    💊 Comprimido
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoFiltro("Transdérmico")}
+                    className={`py-2 rounded-md font-medium text-xs text-center transition-all cursor-pointer border-none ${
+                      tipoFiltro === "Transdérmico"
+                        ? "bg-white text-[#111827] shadow-xs font-bold"
+                        : "text-[#6b7280] hover:text-[#111827]"
+                    }`}
+                  >
+                    💧 Transdérmico
+                  </button>
+                </div>
+              </div>
+
+              {/* 6. Características Desejadas */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
+                  6. Características Desejadas
+                </label>
+                <div className="flex flex-col gap-2.5 bg-neutral-50 p-3 rounded-lg border border-[#e5e7eb]">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-[#374151] select-none">
+                    <input
+                      type="checkbox"
+                      checked={trataVermeCoracao}
+                      onChange={(e) => setTrataVermeCoracao(e.target.checked)}
+                      className="w-4 h-4 rounded border-[#d1d5db] text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer"
+                    />
+                    <span>Trata verme do coração</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-[#374151] select-none">
+                    <input
+                      type="checkbox"
+                      checked={trataGiardia}
+                      onChange={(e) => setTrataGiardia(e.target.checked)}
+                      className="w-4 h-4 rounded border-[#d1d5db] text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer"
+                    />
+                    <span>Trata giárdia</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Botão de Limpar (Cálculo ocorre em tempo real, eliminando a necessidade de cliques extras para calcular) */}
+              {(pesoInput || faixaEtaria !== "Adulto" || idadeDias || trataVermeCoracao || trataGiardia || tipoFiltro !== "Todos") && (
+                <button
+                  type="button"
+                  onClick={handleLimpar}
+                  className="w-full h-10 bg-neutral-100 hover:bg-neutral-200 text-[#6b7280] font-semibold rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1.5"
+                  title="Limpar formulário e redefinir filtros"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Limpar Filtros e Peso
+                </button>
+              )}
             </form>
           </section>
 
@@ -786,6 +954,30 @@ export default function App() {
                             }`}>
                               {m.tipo === "Comprimido" ? "💊 Comp" : "💧 Transd"}
                             </span>
+                            {m.trataVermeCoracao && (
+                              <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 rounded">
+                                Verme Coração
+                              </span>
+                            )}
+                            {m.trataGiardia && (
+                              <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 rounded">
+                                Giárdia
+                              </span>
+                            )}
+                            {m.amploEspectro && (
+                              <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-amber-50 text-amber-600 border border-amber-100 rounded">
+                                Amplo Espectro
+                              </span>
+                            )}
+                            {m.exclusivoFilhotes ? (
+                              <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-purple-50 text-purple-600 border border-purple-100 rounded">
+                                Só Filhote
+                              </span>
+                            ) : m.idadeMinimaDias && m.idadeMinimaDias > 0 ? (
+                              <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-orange-50 text-orange-600 border border-orange-100 rounded">
+                                Mín: {m.idadeMinimaDias}d
+                              </span>
+                            ) : null}
                           </div>
                           <span className="text-[10px] text-[#6b7280]">
                             Caixa: {formatarMoeda(m.precoCaixa)} ({m.qtdComprimidosCaixa} {m.tipo === "Comprimido" ? "comp." : "unid."} a {formatarMoeda(m.precoPorComprimido)}/cada)
@@ -957,6 +1149,69 @@ export default function App() {
                           Adicionar Produto
                         </button>
                       </div>
+
+                      {/* Propriedades Adicionais de Idade e Eficácia Clínica */}
+                      <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-3.5 border-t border-[#e5e7eb] pt-3.5 mt-1">
+                        {/* Idade Mínima (dias) */}
+                        <div className="md:col-span-3 flex flex-col gap-1">
+                          <label htmlFor="form-idade-minima" className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono">
+                            Idade Mínima (dias)
+                          </label>
+                          <input
+                            id="form-idade-minima"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="Ex: 0"
+                            value={novoIdadeMinimaDias}
+                            onChange={(e) => setNovoIdadeMinimaDias(e.target.value.replace(/\D/g, ""))}
+                            className="h-10 px-3 bg-white border-2 border-[#e5e7eb] rounded-md text-sm text-[#111827] focus:outline-hidden focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5] placeholder:text-neutral-400/40"
+                          />
+                        </div>
+
+                        {/* Checkbox Exclusivo para Filhotes */}
+                        <div className="md:col-span-3 flex items-center h-10">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#374151] select-none">
+                            <input
+                              type="checkbox"
+                              checked={novoExclusivoFilhotes}
+                              onChange={(e) => setNovoExclusivoFilhotes(e.target.checked)}
+                              className="w-4 h-4 rounded border-[#d1d5db] text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer"
+                            />
+                            <span>Exclusivo p/ Filhotes</span>
+                          </label>
+                        </div>
+
+                        {/* Checkboxes de propriedades clínicas */}
+                        <div className="md:col-span-6 flex flex-wrap gap-x-4 gap-y-2 items-center h-10">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#374151] select-none">
+                            <input
+                              type="checkbox"
+                              checked={novoTrataVermeCoracao}
+                              onChange={(e) => setNovoTrataVermeCoracao(e.target.checked)}
+                              className="w-4 h-4 rounded border-[#d1d5db] text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer"
+                            />
+                            <span>Verme do Coração</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#374151] select-none">
+                            <input
+                              type="checkbox"
+                              checked={novoTrataGiardia}
+                              onChange={(e) => setNovoTrataGiardia(e.target.checked)}
+                              className="w-4 h-4 rounded border-[#d1d5db] text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer"
+                            />
+                            <span>Giárdia</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#374151] select-none">
+                            <input
+                              type="checkbox"
+                              checked={novoAmploEspectro}
+                              onChange={(e) => setNovoAmploEspectro(e.target.checked)}
+                              className="w-4 h-4 rounded border-[#d1d5db] text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer"
+                            />
+                            <span>Amplo Espectro</span>
+                          </label>
+                        </div>
+                      </div>
                     </form>
 
                     {erroForm && (
@@ -1050,7 +1305,37 @@ export default function App() {
                         <tbody className="divide-y divide-[#e5e7eb]">
                           {medicamentos.map((m) => (
                             <tr key={m.id} className="hover:bg-neutral-50/50">
-                              <td className="py-3 px-4 font-semibold text-[#111827]">{m.nome}</td>
+                              <td className="py-3 px-4">
+                                <div className="flex flex-col gap-1 text-left">
+                                  <span className="font-semibold text-[#111827]">{m.nome}</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {m.trataVermeCoracao && (
+                                      <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 rounded">
+                                        Verme do Coração
+                                      </span>
+                                    )}
+                                    {m.trataGiardia && (
+                                      <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 rounded">
+                                        Giárdia
+                                      </span>
+                                    )}
+                                    {m.amploEspectro && (
+                                      <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-amber-50 text-amber-600 border border-amber-100 rounded">
+                                        Amplo Espectro
+                                      </span>
+                                    )}
+                                    {m.exclusivoFilhotes ? (
+                                      <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-purple-50 text-purple-600 border border-purple-100 rounded">
+                                        Apenas Filhotes
+                                      </span>
+                                    ) : m.idadeMinimaDias && m.idadeMinimaDias > 0 ? (
+                                      <span className="inline-block px-1.5 py-0.5 text-[8px] font-bold bg-orange-50 text-orange-600 border border-orange-100 rounded">
+                                        Mín: {m.idadeMinimaDias} dias
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </td>
                               <td className="py-3 px-4">
                                 <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded ${
                                   m.especie === "Cão"

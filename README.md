@@ -1,97 +1,20 @@
-# 🐾 PetCalcula
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-PetCalcula é uma aplicação web desenvolvida para uso interno em pet shops e clínicas veterinárias.
+# Run and deploy your AI Studio app
 
-Seu objetivo é comparar automaticamente o custo de medicamentos com base no peso do animal, auxiliando o atendente a identificar rapidamente a opção mais econômica.
+This contains everything you need to run your app locally.
 
----
+View your app in AI Studio: https://ai.studio/apps/4e907666-ba46-4807-bcdc-c78a95de8020
 
-## Funcionalidades
+## Run Locally
 
-- Comparação automática entre medicamentos cadastrados
-- Cálculo da quantidade necessária
-- Cálculo do custo do tratamento
-- Ordenação do menor para o maior preço
-- Destaque da melhor opção
-- Filtro por espécie (Cão/Gato)
-- Filtro por forma farmacêutica (Comprimido/Transdérmico)
-- Cadastro de medicamentos
-- Persistência local dos dados
-- Backup e restauração em JSON
+**Prerequisites:**  Node.js
 
----
 
-## Tecnologias
-
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-
----
-
-## Como executar
-
-```bash
-npm install
-npm run dev
-```
-
-A aplicação ficará disponível em:
-
-```
-http://localhost:5173
-```
-
----
-
-## Estrutura dos dados
-
-Cada medicamento possui:
-
-- Nome
-- Categoria
-- Espécie
-- Forma farmacêutica
-- Peso tratado por unidade
-- Preço da caixa
-- Quantidade de unidades por caixa
-
-O preço unitário é calculado automaticamente pela aplicação.
-
----
-
-## Persistência
-
-Atualmente os dados são armazenados no navegador utilizando `localStorage`.
-
-Também é possível exportar e importar backups em JSON.
-
----
-
-## Roadmap
-
-- [x] Comparação de custos
-- [x] Cadastro de medicamentos
-- [x] Persistência local
-- [x] Backup em JSON
-- [x] Filtro por espécie
-- [x] Filtro por forma farmacêutica
-- [ ] API com FastAPI
-- [ ] Banco SQLite
-- [ ] Servidor local (PetTools Server)
-- [ ] Múltiplos módulos da suíte PetTools
-
----
-
-## Objetivo
-
-Este projeto faz parte da futura suíte **PetTools**, um conjunto de ferramentas voltadas à automação de rotinas em pet shops.
-
-O PetCalcula é o primeiro módulo dessa suíte.
-
----
-
-## Licença
-
-Projeto para fins de estudo e desenvolvimento.
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
