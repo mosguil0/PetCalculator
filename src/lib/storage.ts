@@ -1,3 +1,5 @@
+export type ProtocoloTipo = "dose_unica" | "duas_doses_15_dias";
+
 export interface Medicamento {
   id: string;
   nome: string;
@@ -14,6 +16,7 @@ export interface Medicamento {
   trataVermeCoracao: boolean; // Previne/trata verme do coração (Dirofilaria)
   trataGiardia: boolean; // Trata Giárdia
   amploEspectro: boolean; // Vermífugo de amplo espectro
+  protocolo?: ProtocoloTipo; // Protocolo do tratamento
 }
 
 export interface StorageData {
@@ -23,19 +26,19 @@ export interface StorageData {
 }
 
 export const STORAGE_KEY = "pet_shop_vermifugos";
-export const VERSAO_ATUAL = 3; // Incremented version because of the schema update with filter capabilities
+export const VERSAO_ATUAL = 4; // Incremented version because of the schema update with treatment protocols
 
 export const MEDICAMENTOS_PADRAO: Medicamento[] = [
-  { id: "1", nome: "Drontal Plus Sabor Carne (Cães)", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 62.00, qtdComprimidosCaixa: 4, precoPorComprimido: 15.50, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 15, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: true, amploEspectro: true },
-  { id: "2", nome: "Endogard 30kg (Cães Grandes)", categoria: "Vermífugo", pesoTratado: 30, precoCaixa: 69.80, qtdComprimidosCaixa: 2, precoPorComprimido: 34.90, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: true, amploEspectro: true },
-  { id: "3", nome: "Endogard 10kg (Cães Médios)", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 55.60, qtdComprimidosCaixa: 4, precoPorComprimido: 13.90, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: true, amploEspectro: true },
-  { id: "4", nome: "Milbemax Mastigável (Cães de 5 a 25kg)", categoria: "Vermífugo", pesoTratado: 25, precoCaixa: 90.00, qtdComprimidosCaixa: 2, precoPorComprimido: 45.00, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: false, amploEspectro: true },
-  { id: "5", nome: "Top Dog Cães 10kg", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 59.20, qtdComprimidosCaixa: 4, precoPorComprimido: 14.80, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: true, amploEspectro: true },
-  { id: "6", nome: "Chemital Puppy Cães e Gatos", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 42.00, qtdComprimidosCaixa: 4, precoPorComprimido: 10.50, especie: "Ambos", tipo: "Comprimido", idadeMinimaDias: 15, exclusivoFilhotes: true, trataVermeCoracao: false, trataGiardia: true, amploEspectro: true },
-  { id: "7", nome: "Basken Plus Cães 5kg", categoria: "Vermífugo", pesoTratado: 5, precoCaixa: 35.60, qtdComprimidosCaixa: 4, precoPorComprimido: 8.90, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 21, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true },
-  { id: "8", nome: "Profender Spot-on Gatos até 2,5kg", categoria: "Vermífugo", pesoTratado: 2.5, precoCaixa: 75.00, qtdComprimidosCaixa: 1, precoPorComprimido: 75.00, especie: "Gato", tipo: "Transdérmico", idadeMinimaDias: 56, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true },
-  { id: "9", nome: "Profender Spot-on Gatos de 2,5 a 5kg", categoria: "Vermífugo", pesoTratado: 5, precoCaixa: 88.00, qtdComprimidosCaixa: 1, precoPorComprimido: 88.00, especie: "Gato", tipo: "Transdérmico", idadeMinimaDias: 56, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true },
-  { id: "10", nome: "Drontal Gatos", categoria: "Vermífugo", pesoTratado: 4, precoCaixa: 48.00, qtdComprimidosCaixa: 4, precoPorComprimido: 12.00, especie: "Gato", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true },
+  { id: "1", nome: "Drontal Plus Sabor Carne (Cães)", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 62.00, qtdComprimidosCaixa: 4, precoPorComprimido: 15.50, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 15, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: true, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "2", nome: "Endogard 30kg (Cães Grandes)", categoria: "Vermífugo", pesoTratado: 30, precoCaixa: 69.80, qtdComprimidosCaixa: 2, precoPorComprimido: 34.90, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: true, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "3", nome: "Endogard 10kg (Cães Médios)", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 55.60, qtdComprimidosCaixa: 4, precoPorComprimido: 13.90, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: true, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "4", nome: "Milbemax Mastigável (Cães de 5 a 25kg)", categoria: "Vermífugo", pesoTratado: 25, precoCaixa: 90.00, qtdComprimidosCaixa: 2, precoPorComprimido: 45.00, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: false, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "5", nome: "Top Dog Cães 10kg", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 59.20, qtdComprimidosCaixa: 4, precoPorComprimido: 14.80, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: true, trataGiardia: true, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "6", nome: "Chemital Puppy Cães e Gatos", categoria: "Vermífugo", pesoTratado: 10, precoCaixa: 42.00, qtdComprimidosCaixa: 4, precoPorComprimido: 10.50, especie: "Ambos", tipo: "Comprimido", idadeMinimaDias: 15, exclusivoFilhotes: true, trataVermeCoracao: false, trataGiardia: true, amploEspectro: true, protocolo: "duas_doses_15_dias" },
+  { id: "7", nome: "Basken Plus Cães 5kg", categoria: "Vermífugo", pesoTratado: 5, precoCaixa: 35.60, qtdComprimidosCaixa: 4, precoPorComprimido: 8.90, especie: "Cão", tipo: "Comprimido", idadeMinimaDias: 21, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "8", nome: "Profender Spot-on Gatos até 2,5kg", categoria: "Vermífugo", pesoTratado: 2.5, precoCaixa: 75.00, qtdComprimidosCaixa: 1, precoPorComprimido: 75.00, especie: "Gato", tipo: "Transdérmico", idadeMinimaDias: 56, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "9", nome: "Profender Spot-on Gatos de 2,5 a 5kg", categoria: "Vermífugo", pesoTratado: 5, precoCaixa: 88.00, qtdComprimidosCaixa: 1, precoPorComprimido: 88.00, especie: "Gato", tipo: "Transdérmico", idadeMinimaDias: 56, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true, protocolo: "dose_unica" },
+  { id: "10", nome: "Drontal Gatos", categoria: "Vermífugo", pesoTratado: 4, precoCaixa: 48.00, qtdComprimidosCaixa: 4, precoPorComprimido: 12.00, especie: "Gato", tipo: "Comprimido", idadeMinimaDias: 42, exclusivoFilhotes: false, trataVermeCoracao: false, trataGiardia: false, amploEspectro: true, protocolo: "dose_unica" },
 ];
 
 /**
@@ -85,6 +88,7 @@ export function migrarDados(raw: any): StorageData {
       const trataVermeCoracao = typeof item.trataVermeCoracao === "boolean" ? item.trataVermeCoracao : false;
       const trataGiardia = typeof item.trataGiardia === "boolean" ? item.trataGiardia : false;
       const amploEspectro = typeof item.amploEspectro === "boolean" ? item.amploEspectro : true;
+      const protocolo = item.protocolo === "dose_unica" || item.protocolo === "duas_doses_15_dias" ? item.protocolo : "dose_unica";
 
       return {
         id,
@@ -100,7 +104,8 @@ export function migrarDados(raw: any): StorageData {
         exclusivoFilhotes,
         trataVermeCoracao,
         trataGiardia,
-        amploEspectro
+        amploEspectro,
+        protocolo
       };
     });
 
@@ -146,6 +151,7 @@ export function migrarDados(raw: any): StorageData {
     const trataVermeCoracao = typeof item.trataVermeCoracao === "boolean" ? item.trataVermeCoracao : false;
     const trataGiardia = typeof item.trataGiardia === "boolean" ? item.trataGiardia : false;
     const amploEspectro = typeof item.amploEspectro === "boolean" ? item.amploEspectro : true;
+    const protocolo = item.protocolo === "dose_unica" || item.protocolo === "duas_doses_15_dias" ? item.protocolo : "dose_unica";
 
     return {
       id,
@@ -161,7 +167,8 @@ export function migrarDados(raw: any): StorageData {
       exclusivoFilhotes,
       trataVermeCoracao,
       trataGiardia,
-      amploEspectro
+      amploEspectro,
+      protocolo
     };
   });
 

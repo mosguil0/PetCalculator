@@ -7,7 +7,6 @@ import {
   CheckCircle2, 
   Info, 
   Coins, 
-  Sparkles, 
   PawPrint,
   Save,
   ChevronDown,
@@ -24,7 +23,8 @@ import {
   validarEstrutura,
   migrarDados,
   Medicamento,
-  StorageData
+  StorageData,
+  ProtocoloTipo
 } from "./lib/storage";
 
 export default function App() {
@@ -62,6 +62,8 @@ export default function App() {
   const [novoTrataVermeCoracao, setNovoTrataVermeCoracao] = useState<boolean>(false);
   const [novoTrataGiardia, setNovoTrataGiardia] = useState<boolean>(false);
   const [novoAmploEspectro, setNovoAmploEspectro] = useState<boolean>(true);
+  const [novoProtocolo, setNovoProtocolo] = useState<ProtocoloTipo>("duas_doses_15_dias");
+  const [idEmEdicao, setIdEmEdicao] = useState<string | null>(null);
   const [erroForm, setErroForm] = useState("");
 
   // Estados de feedback de backup
@@ -183,7 +185,7 @@ export default function App() {
     }, 50);
   };
 
-  // Adicionar novo medicamento com validações completas e tratamento de duplicidade
+  // Adicionar ou editar medicamento com validações completas e tratamento de duplicidade
   const handleAdicionarMedicamento = (e: React.FormEvent) => {
     e.preventDefault();
     setErroForm("");
@@ -194,9 +196,9 @@ export default function App() {
       return;
     }
 
-    // Validação de nomes duplicados (case insensitive)
+    // Validação de nomes duplicados (case insensitive, ignorando o próprio medicamento se estiver editando)
     const nomeDuplicado = medicamentos.some(
-      (m) => m.nome.trim().toLowerCase() === nomeTratado.toLowerCase()
+      (m) => m.nome.trim().toLowerCase() === nomeTratado.toLowerCase() && m.id !== idEmEdicao
     );
     if (nomeDuplicado) {
       setErroForm("Já existe um medicamento cadastrado com este nome.");
@@ -240,24 +242,52 @@ export default function App() {
     const precoPorComprimido = precoCaixaNum / qtdComprimidosNum;
     const idadeMinimaDiasNum = parseInt(novoIdadeMinimaDias.trim(), 10) || 0;
 
-    const novoMed: Medicamento = {
-      id: Date.now().toString(),
-      nome: nomeTratado,
-      categoria: "Vermífugo",
-      pesoTratado: pesoNum,
-      precoCaixa: precoCaixaNum,
-      qtdComprimidosCaixa: qtdComprimidosNum,
-      precoPorComprimido: precoPorComprimido,
-      especie: novoEspecie,
-      tipo: novoTipo,
-      idadeMinimaDias: idadeMinimaDiasNum,
-      exclusivoFilhotes: novoExclusivoFilhotes,
-      trataVermeCoracao: novoTrataVermeCoracao,
-      trataGiardia: novoTrataGiardia,
-      amploEspectro: novoAmploEspectro,
-    };
+    if (idEmEdicao) {
+      setMedicamentos((prev) =>
+        prev.map((m) => {
+          if (m.id === idEmEdicao) {
+            return {
+              ...m,
+              nome: nomeTratado,
+              pesoTratado: pesoNum,
+              precoCaixa: precoCaixaNum,
+              qtdComprimidosCaixa: qtdComprimidosNum,
+              precoPorComprimido: precoPorComprimido,
+              especie: novoEspecie,
+              tipo: novoTipo,
+              idadeMinimaDias: idadeMinimaDiasNum,
+              exclusivoFilhotes: novoExclusivoFilhotes,
+              trataVermeCoracao: novoTrataVermeCoracao,
+              trataGiardia: novoTrataGiardia,
+              amploEspectro: novoAmploEspectro,
+              protocolo: novoProtocolo,
+            };
+          }
+          return m;
+        })
+      );
+      setIdEmEdicao(null);
+    } else {
+      const novoMed: Medicamento = {
+        id: Date.now().toString(),
+        nome: nomeTratado,
+        categoria: "Vermífugo",
+        pesoTratado: pesoNum,
+        precoCaixa: precoCaixaNum,
+        qtdComprimidosCaixa: qtdComprimidosNum,
+        precoPorComprimido: precoPorComprimido,
+        especie: novoEspecie,
+        tipo: novoTipo,
+        idadeMinimaDias: idadeMinimaDiasNum,
+        exclusivoFilhotes: novoExclusivoFilhotes,
+        trataVermeCoracao: novoTrataVermeCoracao,
+        trataGiardia: novoTrataGiardia,
+        amploEspectro: novoAmploEspectro,
+        protocolo: novoProtocolo,
+      };
+      setMedicamentos((prev) => [...prev, novoMed]);
+    }
 
-    setMedicamentos((prev) => [...prev, novoMed]);
     setNovoNome("");
     setNovoPeso("");
     setNovoPrecoCaixa("");
@@ -269,9 +299,60 @@ export default function App() {
     setNovoTrataVermeCoracao(false);
     setNovoTrataGiardia(false);
     setNovoAmploEspectro(true);
+    setNovoProtocolo("duas_doses_15_dias");
     setErroForm("");
 
     // Mantém o foco no primeiro campo de cadastro de forma limpa
+    setTimeout(() => {
+      nomeInputRef.current?.focus();
+    }, 50);
+  };
+
+  // Iniciar a edição de um medicamento
+  const handleIniciarEdicao = (med: Medicamento) => {
+    setIdEmEdicao(med.id);
+    setNovoNome(med.nome);
+    setNovoPeso(med.pesoTratado.toString());
+    setNovoPrecoCaixa(med.precoCaixa.toString());
+    setNovaQtdComprimidosCaixa(med.qtdComprimidosCaixa.toString());
+    setNovoEspecie(med.especie);
+    setNovoTipo(med.tipo);
+    setNovoIdadeMinimaDias((med.idadeMinimaDias ?? 0).toString());
+    setNovoExclusivoFilhotes(med.exclusivoFilhotes ?? false);
+    setNovoTrataVermeCoracao(med.trataVermeCoracao ?? false);
+    setNovoTrataGiardia(med.trataGiardia ?? false);
+    setNovoAmploEspectro(med.amploEspectro ?? true);
+    setNovoProtocolo(med.protocolo ?? "dose_unica");
+    setErroForm("");
+
+    // Rola suavemente até o formulário de cadastro/edição
+    const formElement = document.getElementById("form-cadastro-secao");
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: "smooth" });
+    }
+
+    setTimeout(() => {
+      nomeInputRef.current?.focus();
+    }, 150);
+  };
+
+  // Cancelar a edição de um medicamento
+  const handleCancelarEdicao = () => {
+    setIdEmEdicao(null);
+    setNovoNome("");
+    setNovoPeso("");
+    setNovoPrecoCaixa("");
+    setNovaQtdComprimidosCaixa("");
+    setNovoEspecie("Cão");
+    setNovoTipo("Comprimido");
+    setNovoIdadeMinimaDias("0");
+    setNovoExclusivoFilhotes(false);
+    setNovoTrataVermeCoracao(false);
+    setNovoTrataGiardia(false);
+    setNovoAmploEspectro(true);
+    setNovoProtocolo("duas_doses_15_dias");
+    setErroForm("");
+
     setTimeout(() => {
       nomeInputRef.current?.focus();
     }, 50);
@@ -375,14 +456,19 @@ export default function App() {
     });
     
     const res = filtrados.map((med) => {
-      const quantidade = calcularComprimidos(pesoCalculado, med.pesoTratado);
-      // Calcula a quantidade de caixas fechadas necessárias para cobrir a dose calculada
-      const caixas = Math.ceil(quantidade / med.qtdComprimidosCaixa);
+      const quantidadeAdministracao = calcularComprimidos(pesoCalculado, med.pesoTratado);
+      const multiplicador = med.protocolo === "duas_doses_15_dias" ? 2 : 1;
+      const quantidadeTotal = quantidadeAdministracao * multiplicador;
+      
+      // Calcula a quantidade de caixas fechadas necessárias para cobrir a dose calculada total do protocolo
+      const caixas = Math.ceil(quantidadeTotal / med.qtdComprimidosCaixa);
       const precoTotalOriginal = caixas * med.precoCaixa;
       const precoTotal = temDescontoAtivo ? precoTotalOriginal * 0.9 : precoTotalOriginal;
       return {
         ...med,
-        quantidade,
+        quantidade: quantidadeAdministracao, // dose por administração
+        quantidadeTotal, // quantidade total para o protocolo completo
+        multiplicador,
         caixas,
         precoTotalOriginal,
         precoTotal,
@@ -393,8 +479,8 @@ export default function App() {
       if (Math.abs(a.precoTotal - b.precoTotal) > 0.0001) {
         return a.precoTotal - b.precoTotal;
       }
-      if (Math.abs(a.quantidade - b.quantidade) > 0.0001) {
-        return a.quantidade - b.quantidade;
+      if (Math.abs(a.quantidadeTotal - b.quantidadeTotal) > 0.0001) {
+        return a.quantidadeTotal - b.quantidadeTotal;
       }
       return a.nome.localeCompare(b.nome);
     });
@@ -702,7 +788,6 @@ export default function App() {
             )}
 
             {/* Estado Vazio ou Tabela de Resultados */}
-            {/* Estado Vazio ou Tabela de Resultados */}
             {pesoCalculado !== null ? (
               resultados.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-neutral-50/30 min-h-[300px]">
@@ -719,6 +804,42 @@ export default function App() {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col">
+                  
+                  {/* Resumo da Pesquisa */}
+                  <div className="mx-6 mb-4 p-4 bg-neutral-50 rounded-lg border border-[#e5e7eb] flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 text-xs">
+                    <div className="flex flex-col gap-1">
+                      <div className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono">
+                        Animal consultado
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm font-semibold text-[#111827]">
+                        <span>{especiePet === "Cão" ? "🐕 Cão" : "🐈 Gato"}</span>
+                        <span className="text-neutral-300">•</span>
+                        <span>{formatarNumero(pesoCalculado)} kg</span>
+                        <span className="text-neutral-300">•</span>
+                        <span>{faixaEtaria} {faixaEtaria === "Filhote" && idadeDias ? `(${idadeDias} dias)` : ""}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 sm:items-end">
+                      <div className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono sm:text-right">
+                        Filtros aplicados
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-0.5 justify-start sm:justify-end">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white text-neutral-700 border border-[#e5e7eb] font-semibold text-[10px] shadow-3xs">
+                          <span className="text-[#4f46e5] font-bold">✓</span> {tipoFiltro === "Todos" ? "Qualquer Apresentação" : tipoFiltro}
+                        </span>
+                        {trataVermeCoracao && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white text-neutral-700 border border-[#e5e7eb] font-semibold text-[10px] shadow-3xs">
+                            <span className="text-[#4f46e5] font-bold">✓</span> Trata verme do coração
+                          </span>
+                        )}
+                        {trataGiardia && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white text-neutral-700 border border-[#e5e7eb] font-semibold text-[10px] shadow-3xs">
+                            <span className="text-[#4f46e5] font-bold">✓</span> Trata giárdia
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   
                   {/* Tabela de Resultados Dinâmica */}
                   <div className="overflow-x-auto">
@@ -756,31 +877,20 @@ export default function App() {
                                       </span>
                                     )}
                                   </div>
-                                  
-                                  {/* Badges de Espécie e Tipo */}
-                                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                                      item.especie === "Cão"
-                                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                        : item.especie === "Gato"
-                                        ? "bg-pink-50 text-pink-700 border border-pink-200"
-                                        : "bg-purple-50 text-purple-700 border border-purple-200"
+
+                                  <span className={`text-xs mt-0.5 block ${isCheapest ? "text-[#166534]/80" : "text-[#6b7280]"}`}>
+                                    {item.pesoTratado} kg por {item.tipo === "Comprimido" ? "comprimido" : "unidade"} • Embalagem: {item.qtdComprimidosCaixa} {item.tipo === "Comprimido" ? "comp." : "unid."} ({formatarMoeda(item.precoCaixa)})
+                                  </span>
+
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wide ${
+                                      item.protocolo === "duas_doses_15_dias"
+                                        ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                        : "bg-blue-100 text-blue-800 border border-blue-200"
                                     }`}>
-                                      {item.especie === "Cão" ? "🐕 Cão" : item.especie === "Gato" ? "🐈 Gato" : "🐾 Cão e Gato"}
-                                    </span>
-                                    
-                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                                      item.tipo === "Comprimido"
-                                        ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                        : "bg-teal-50 text-teal-700 border border-teal-200"
-                                    }`}>
-                                      {item.tipo === "Comprimido" ? "💊 Comprimido" : "💧 Transdérmico"}
+                                      Protocolo: {item.protocolo === "duas_doses_15_dias" ? "2 doses (15 dias)" : "Dose única"}
                                     </span>
                                   </div>
-
-                                  <span className={`text-xs mt-1 block ${isCheapest ? "text-[#166534]/80" : "text-[#6b7280]"}`}>
-                                    Dose: {item.pesoTratado} kg / {item.tipo === "Comprimido" ? "comp." : "aplic."} • Caixa: {formatarMoeda(item.precoCaixa)} ({item.qtdComprimidosCaixa} {item.tipo === "Comprimido" ? "comp." : "unid."} a {formatarMoeda(item.precoPorComprimido)}/cada)
-                                  </span>
                                 </div>
                               </td>
   
@@ -792,8 +902,11 @@ export default function App() {
                               {/* Quantidade Calculada */}
                               <td className="py-4 px-4 text-right">
                                 <div className="flex flex-col items-end">
-                                  <span className="font-mono font-bold text-sm sm:text-base">
-                                    {formatarNumero(item.quantidade)} {item.tipo === "Comprimido" ? "comp." : "unid."}
+                                  <span className={`text-[11px] font-semibold ${isCheapest ? "text-[#166534]/80" : "text-neutral-500"}`}>
+                                    Dose p/ adm: <span className="font-mono font-bold">{formatarNumero(item.quantidade)}</span> {item.tipo === "Comprimido" ? "comp." : "unid."}
+                                  </span>
+                                  <span className="font-mono font-bold text-sm sm:text-base mt-0.5">
+                                    Total: {formatarNumero(item.quantidadeTotal)} {item.tipo === "Comprimido" ? "comp." : "unid."}
                                   </span>
                                   <span className={`text-[10px] font-semibold ${isCheapest ? "text-[#166534]/80" : "text-[#6b7280]"}`}>
                                     {item.caixas} {item.caixas === 1 ? "caixa" : "caixas"}
@@ -850,65 +963,6 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
-  
-                  {/* Resumo da melhor opção */}
-                  {resultados.length > 0 && (
-                    <div className="m-6 mt-auto p-5 bg-gradient-to-r from-[#166534] to-[#14532d] text-white rounded-lg shadow-md flex flex-col gap-4 border border-[#15803d]/30">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#4ade80]" />
-                          <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-[#bbf7d0]">Melhor Opção de Tratamento</h3>
-                        </div>
-                        {resultados.length > 1 && (
-                          <span className="text-[10px] font-bold bg-[#4ade80]/20 text-[#4ade80] px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">
-                            Mais Econômico
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
-                        <div>
-                          <span className="text-[10px] text-white/75 uppercase tracking-wider font-mono block">Produto</span>
-                          <span className="font-bold text-sm sm:text-base flex items-center gap-1.5">
-                            {resultados[0].nome}
-                            <span className="text-[10px] px-1 py-0.5 bg-white/10 rounded font-normal font-sans">
-                              {resultados[0].tipo === "Comprimido" ? "💊 comp." : "💧 transd."}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="text-left sm:text-center">
-                          <span className="text-[10px] text-white/75 uppercase tracking-wider font-mono block">Quantidade Necessária</span>
-                          <span className="font-mono font-bold text-sm sm:text-base">
-                            {formatarNumero(resultados[0].quantidade)} {resultados[0].tipo === "Comprimido" ? "comp." : "unid."} ({resultados[0].caixas} {resultados[0].caixas === 1 ? 'caixa' : 'caixas'})
-                          </span>
-                        </div>
-                        <div className="text-left sm:text-right">
-                          <span className="text-[10px] text-white/75 uppercase tracking-wider font-mono block">Valor Total</span>
-                          {temDescontoAtivo ? (
-                            <div className="flex flex-col sm:items-end">
-                              <span className="text-xs text-white/60 line-through font-mono leading-none mb-0.5">
-                                {formatarMoeda(resultados[0].precoTotalOriginal)}
-                              </span>
-                              <span className="text-lg sm:text-xl font-black font-mono text-[#4ade80]">
-                                {formatarMoeda(resultados[0].precoTotal)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-lg sm:text-xl font-black font-mono">{formatarMoeda(resultados[0].precoTotal)}</span>
-                          )}
-                        </div>
-                      </div>
-  
-                      {resultados.length > 1 && (
-                        <div className="text-xs text-[#bbf7d0] bg-white/5 px-3 py-2 rounded-md flex items-center justify-between border border-white/5 font-medium">
-                          <span>Economia em relação à segunda opção ({resultados[1].nome}):</span>
-                          <span className="font-bold font-mono text-sm">
-                            {formatarMoeda(resultados[1].precoTotal - resultados[0].precoTotal)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
   
                 </div>
               )
@@ -1029,11 +1083,27 @@ export default function App() {
               >
                 <div className="p-6 flex flex-col gap-6">
                   
-                  {/* Formulário para Adicionar */}
-                  <div className="bg-white p-5 rounded-lg border border-[#e5e7eb] shadow-2xs flex flex-col gap-4">
+                  {/* Formulário para Adicionar / Editar */}
+                  <div 
+                    id="form-cadastro-secao" 
+                    className={`p-5 rounded-lg border-2 shadow-2xs flex flex-col gap-4 transition-all duration-300 ${
+                      idEmEdicao 
+                        ? "bg-purple-50/50 border-[#8b5cf6]" 
+                        : "bg-white border-[#e5e7eb]"
+                    }`}
+                  >
                     <h3 className="font-semibold text-[#111827] text-xs uppercase tracking-wider font-mono flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5 text-[#4f46e5]" />
-                      Cadastrar Novo Vermífugo
+                      {idEmEdicao ? (
+                        <>
+                          <span className="text-[#8b5cf6]">✏️</span>
+                          <span className="text-[#8b5cf6]">Editar Vermífugo</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-3.5 h-3.5 text-[#4f46e5]" />
+                          <span>Cadastrar Novo Vermífugo</span>
+                        </>
+                      )}
                     </h3>
 
                     <form onSubmit={handleAdicionarMedicamento} className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-end">
@@ -1140,14 +1210,32 @@ export default function App() {
                         />
                       </div>
 
-                      {/* Botão de Enviar */}
+                      {/* Botão de Enviar / Ações de Edição */}
                       <div className="md:col-span-3">
-                        <button
-                          type="submit"
-                          className="w-full h-10 bg-[#4f46e5] hover:bg-[#4f46e5]/95 text-white font-semibold rounded-md text-sm transition-colors cursor-pointer text-center focus:outline-hidden focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
-                        >
-                          Adicionar Produto
-                        </button>
+                        {idEmEdicao ? (
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-md text-xs sm:text-sm transition-colors cursor-pointer text-center focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                            >
+                              Salvar alterações
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelarEdicao}
+                              className="flex-1 h-10 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 font-bold rounded-md text-xs sm:text-sm transition-colors cursor-pointer text-center focus:outline-hidden focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="submit"
+                            className="w-full h-10 bg-[#4f46e5] hover:bg-[#4f46e5]/95 text-white font-semibold rounded-md text-sm transition-colors cursor-pointer text-center focus:outline-hidden focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
+                          >
+                            Adicionar Produto
+                          </button>
+                        )}
                       </div>
 
                       {/* Propriedades Adicionais de Idade e Eficácia Clínica */}
@@ -1168,8 +1256,24 @@ export default function App() {
                           />
                         </div>
 
+                        {/* Protocolo de Tratamento */}
+                        <div className="md:col-span-3 flex flex-col gap-1">
+                          <label htmlFor="form-protocolo" className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono">
+                            Protocolo de Tratamento
+                          </label>
+                          <select
+                            id="form-protocolo"
+                            value={novoProtocolo}
+                            onChange={(e) => setNovoProtocolo(e.target.value as ProtocoloTipo)}
+                            className="h-10 px-3 bg-white border-2 border-[#e5e7eb] rounded-md text-sm text-[#111827] focus:outline-hidden focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5] cursor-pointer"
+                          >
+                            <option value="dose_unica">Dose única</option>
+                            <option value="duas_doses_15_dias">2 doses (15 dias)</option>
+                          </select>
+                        </div>
+
                         {/* Checkbox Exclusivo para Filhotes */}
-                        <div className="md:col-span-3 flex items-center h-10">
+                        <div className="md:col-span-2 flex items-center h-10">
                           <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#374151] select-none">
                             <input
                               type="checkbox"
@@ -1182,7 +1286,7 @@ export default function App() {
                         </div>
 
                         {/* Checkboxes de propriedades clínicas */}
-                        <div className="md:col-span-6 flex flex-wrap gap-x-4 gap-y-2 items-center h-10">
+                        <div className="md:col-span-4 flex flex-wrap gap-x-4 gap-y-2 items-center h-10">
                           <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#374151] select-none">
                             <input
                               type="checkbox"
@@ -1278,14 +1382,6 @@ export default function App() {
                       <h3 className="font-semibold text-[#111827] text-xs uppercase tracking-wider font-mono">
                         Produtos Ativos ({medicamentos.length})
                       </h3>
-                      <button
-                        type="button"
-                        onClick={handleRestaurarPadrao}
-                        className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        Restaurar Padrão de Fábrica
-                      </button>
                     </div>
 
                     <div className="bg-white rounded-lg border border-[#e5e7eb] overflow-x-auto shadow-2xs">
@@ -1365,14 +1461,25 @@ export default function App() {
                               </td>
                               <td className="py-3 px-4 text-right font-mono text-[#111827] font-semibold">{formatarMoeda(m.precoCaixa)}</td>
                               <td className="py-3 px-4 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleExcluirMedicamento(m.id)}
-                                  className="text-rose-500 hover:text-rose-700 p-1.5 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="Excluir Vermífugo"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleIniciarEdicao(m)}
+                                    className="text-[#4f46e5] hover:text-[#4338ca] p-1.5 rounded-md hover:bg-[#e0e7ff] transition-colors cursor-pointer flex items-center gap-0.5 text-xs font-semibold"
+                                    title="Editar Vermífugo"
+                                  >
+                                    <span>✏️</span>
+                                    <span className="hidden sm:inline">Editar</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExcluirMedicamento(m.id)}
+                                    className="text-rose-500 hover:text-rose-700 p-1.5 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                                    title="Excluir Vermífugo"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
