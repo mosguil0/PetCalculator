@@ -43,6 +43,7 @@ export default function App() {
   const [tipoFiltro, setTipoFiltro] = useState<"Todos" | "Comprimido" | "Transdérmico">("Todos");
   const [faixaEtaria, setFaixaEtaria] = useState<"Adulto" | "Filhote">("Adulto");
   const [idadeDias, setIdadeDias] = useState<string>("");
+  const [unidadeIdade, setUnidadeIdade] = useState<"Dias" | "Meses">("Dias");
   const [trataVermeCoracao, setTrataVermeCoracao] = useState<boolean>(false);
   const [trataGiardia, setTrataGiardia] = useState<boolean>(false);
   const [amploEspectro, setAmploEspectro] = useState<boolean>(false);
@@ -176,6 +177,7 @@ export default function App() {
     setErroPeso("");
     setFaixaEtaria("Adulto");
     setIdadeDias("");
+    setUnidadeIdade("Dias");
     setTrataVermeCoracao(false);
     setTrataGiardia(false);
     setAmploEspectro(false);
@@ -440,7 +442,11 @@ export default function App() {
         }
       } else {
         // Se filhote: utilizar a idade mínima cadastrada dos medicamentos para filtrar os resultados
-        const idadeEmDias = parseInt(idadeDias.trim(), 10);
+        const idadeDigitada = parseInt(idadeDias.trim(), 10);
+        let idadeEmDias = isNaN(idadeDigitada) ? NaN : idadeDigitada;
+        if (!isNaN(idadeEmDias) && unidadeIdade === "Meses") {
+          idadeEmDias = idadeEmDias * 30;
+        }
         if (!isNaN(idadeEmDias)) {
           // Mostrar apenas medicamentos compatíveis com animais daquela idade ou mais velha
           matchIdade = (med.idadeMinimaDias ?? 0) <= idadeEmDias;
@@ -492,6 +498,7 @@ export default function App() {
     tipoFiltro,
     faixaEtaria,
     idadeDias,
+    unidadeIdade,
     trataVermeCoracao,
     trataGiardia,
     amploEspectro
@@ -640,7 +647,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 4. Idade em dias (Somente se Filhote) */}
+              {/* 4. Idade do Filhote (Somente se Filhote) */}
               <AnimatePresence initial={false}>
                 {faixaEtaria === "Filhote" && (
                   <motion.div
@@ -651,24 +658,47 @@ export default function App() {
                     className="overflow-hidden flex flex-col gap-1.5"
                   >
                     <label htmlFor="idade-dias" className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">
-                      4. Idade do Filhote (dias)
+                      4. Idade do Filhote ({unidadeIdade.toLowerCase()})
                     </label>
-                    <div className="relative">
-                      <input
-                        id="idade-dias"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="Ex: 40"
-                        value={idadeDias}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          setIdadeDias(val);
-                        }}
-                        className="w-full h-11 px-4 bg-white border-2 border-[#e5e7eb] rounded-lg font-medium text-sm text-[#111827] focus:outline-hidden focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5] transition-all placeholder:text-neutral-400/40"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#6b7280] font-mono">
-                        dias
-                      </span>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          id="idade-dias"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder={unidadeIdade === "Dias" ? "Ex: 40" : "Ex: 3"}
+                          value={idadeDias}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            setIdadeDias(val);
+                          }}
+                          className="w-full h-11 px-4 bg-white border-2 border-[#e5e7eb] rounded-lg font-medium text-sm text-[#111827] focus:outline-hidden focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5] transition-all placeholder:text-neutral-400/40"
+                        />
+                      </div>
+                      <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-[#e5e7eb]">
+                        <button
+                          type="button"
+                          onClick={() => setUnidadeIdade("Dias")}
+                          className={`px-3 h-10 rounded-md font-semibold text-xs transition-all cursor-pointer ${
+                            unidadeIdade === "Dias"
+                              ? "bg-white text-[#4f46e5] shadow-xs font-bold"
+                              : "text-neutral-500 hover:text-neutral-800"
+                          }`}
+                        >
+                          Dias
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUnidadeIdade("Meses")}
+                          className={`px-3 h-10 rounded-md font-semibold text-xs transition-all cursor-pointer ${
+                            unidadeIdade === "Meses"
+                              ? "bg-white text-[#4f46e5] shadow-xs font-bold"
+                              : "text-neutral-500 hover:text-neutral-800"
+                          }`}
+                        >
+                          Meses
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -816,7 +846,20 @@ export default function App() {
                         <span className="text-neutral-300">•</span>
                         <span>{formatarNumero(pesoCalculado)} kg</span>
                         <span className="text-neutral-300">•</span>
-                        <span>{faixaEtaria} {faixaEtaria === "Filhote" && idadeDias ? `(${idadeDias} dias)` : ""}</span>
+                        <span>
+                          {faixaEtaria}{" "}
+                          {faixaEtaria === "Filhote" && idadeDias
+                            ? `(${idadeDias} ${
+                                unidadeIdade === "Dias"
+                                  ? idadeDias === "1"
+                                    ? "dia"
+                                    : "dias"
+                                  : idadeDias === "1"
+                                  ? "mês"
+                                  : "meses"
+                              })`
+                            : ""}
+                        </span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 sm:items-end">
