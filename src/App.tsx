@@ -33,6 +33,10 @@ export default function App() {
     return carregarDados().produtos;
   });
 
+  const medicamentosOrdenados = useMemo(() => {
+    return [...medicamentos].sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [medicamentos]);
+
   // Peso inserido pelo atendente
   const [pesoInput, setPesoInput] = useState<string>("");
   const [pesoCalculado, setPesoCalculado] = useState<number | null>(null);
@@ -41,6 +45,7 @@ export default function App() {
   // Filtros de busca / recomendação de dosagem do fluxo rápido
   const [especiePet, setEspeciePet] = useState<"Cão" | "Gato">("Cão");
   const [tipoFiltro, setTipoFiltro] = useState<"Todos" | "Comprimido" | "Transdérmico">("Todos");
+  const [ordenarPor, setOrdenarPor] = useState<"preco" | "quantidade">("preco");
   const [faixaEtaria, setFaixaEtaria] = useState<"Adulto" | "Filhote">("Adulto");
   const [idadeDias, setIdadeDias] = useState<string>("");
   const [unidadeIdade, setUnidadeIdade] = useState<"Dias" | "Meses">("Dias");
@@ -182,6 +187,7 @@ export default function App() {
     setTrataGiardia(false);
     setAmploEspectro(false);
     setTipoFiltro("Todos");
+    setOrdenarPor("preco");
     setTimeout(() => {
       pesoInputRef.current?.focus();
     }, 50);
@@ -482,11 +488,21 @@ export default function App() {
     });
 
     return res.sort((a, b) => {
-      if (Math.abs(a.precoTotal - b.precoTotal) > 0.0001) {
-        return a.precoTotal - b.precoTotal;
-      }
-      if (Math.abs(a.quantidadeTotal - b.quantidadeTotal) > 0.0001) {
-        return a.quantidadeTotal - b.quantidadeTotal;
+      if (ordenarPor === "preco") {
+        if (Math.abs(a.precoTotal - b.precoTotal) > 0.0001) {
+          return a.precoTotal - b.precoTotal;
+        }
+        if (Math.abs(a.quantidadeTotal - b.quantidadeTotal) > 0.0001) {
+          return a.quantidadeTotal - b.quantidadeTotal;
+        }
+      } else {
+        // quantidade
+        if (Math.abs(a.quantidadeTotal - b.quantidadeTotal) > 0.0001) {
+          return a.quantidadeTotal - b.quantidadeTotal;
+        }
+        if (Math.abs(a.precoTotal - b.precoTotal) > 0.0001) {
+          return a.precoTotal - b.precoTotal;
+        }
       }
       return a.nome.localeCompare(b.nome);
     });
@@ -496,6 +512,7 @@ export default function App() {
     temDescontoAtivo,
     especiePet,
     tipoFiltro,
+    ordenarPor,
     faixaEtaria,
     idadeDias,
     unidadeIdade,
@@ -506,7 +523,14 @@ export default function App() {
 
   // Encontra o menor preço para destacar
   const menorPreco = useMemo(() => {
-    return resultados.length > 0 ? resultados[0].precoTotal : 0;
+    if (resultados.length === 0) return 0;
+    return Math.min(...resultados.map((r) => r.precoTotal));
+  }, [resultados]);
+
+  // Encontra a menor quantidade total de comprimidos/doses para destacar
+  const menorQuantidadeTotal = useMemo(() => {
+    if (resultados.length === 0) return 0;
+    return Math.min(...resultados.map((r) => r.quantidadeTotal));
   }, [resultados]);
 
   return (
@@ -836,7 +860,7 @@ export default function App() {
                 <div className="flex-1 flex flex-col">
                   
                   {/* Resumo da Pesquisa */}
-                  <div className="mx-6 mb-4 p-4 bg-neutral-50 rounded-lg border border-[#e5e7eb] flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 text-xs">
+                  <div className="mx-6 mb-4 p-4 bg-neutral-50 rounded-lg border border-[#e5e7eb] flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-xs">
                     <div className="flex flex-col gap-1">
                       <div className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono">
                         Animal consultado
@@ -862,11 +886,11 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1 sm:items-end">
-                      <div className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono sm:text-right">
+                    <div className="flex flex-col gap-1">
+                      <div className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono">
                         Filtros aplicados
                       </div>
-                      <div className="flex flex-wrap gap-2 mt-0.5 justify-start sm:justify-end">
+                      <div className="flex flex-wrap gap-2 mt-0.5 justify-start">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white text-neutral-700 border border-[#e5e7eb] font-semibold text-[10px] shadow-3xs">
                           <span className="text-[#4f46e5] font-bold">✓</span> {tipoFiltro === "Todos" ? "Qualquer Apresentação" : tipoFiltro}
                         </span>
@@ -880,6 +904,36 @@ export default function App() {
                             <span className="text-[#4f46e5] font-bold">✓</span> Trata giárdia
                           </span>
                         )}
+                      </div>
+                    </div>
+                    {/* Destaque / Ordenação */}
+                    <div className="flex flex-col gap-1 md:items-end">
+                      <div className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider font-mono md:text-right">
+                        Destaque / Ordenação por
+                      </div>
+                      <div className="flex bg-neutral-200/60 p-0.5 rounded-lg border border-[#e2e8f0]">
+                        <button
+                          type="button"
+                          onClick={() => setOrdenarPor("preco")}
+                          className={`px-2.5 py-1 rounded-md font-semibold text-[10px] transition-all cursor-pointer ${
+                            ordenarPor === "preco"
+                              ? "bg-white text-emerald-700 shadow-3xs font-bold"
+                              : "text-neutral-500 hover:text-neutral-800"
+                          }`}
+                        >
+                          💸 Menor Preço
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOrdenarPor("quantidade")}
+                          className={`px-2.5 py-1 rounded-md font-semibold text-[10px] transition-all cursor-pointer ${
+                            ordenarPor === "quantidade"
+                              ? "bg-white text-purple-700 shadow-3xs font-bold"
+                              : "text-neutral-500 hover:text-neutral-800"
+                          }`}
+                        >
+                          💊 Fácil Adm. (Menor Dose)
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -898,30 +952,53 @@ export default function App() {
                       <tbody className="divide-y divide-[#e5e7eb]">
                         {resultados.map((item, index) => {
                           const isCheapest = item.precoTotal === menorPreco;
+                          const isFewestPills = item.quantidadeTotal === menorQuantidadeTotal;
+                          const isPrimaryWinner = ordenarPor === "preco" ? isCheapest : isFewestPills;
+                          
+                          let rowClass = "hover:bg-[#f9fafb]";
+                          if (isPrimaryWinner) {
+                            rowClass = ordenarPor === "preco"
+                              ? "bg-[#dcfce7]/75 text-[#166534] font-semibold"
+                              : "bg-[#f5f3ff] text-[#5b21b6] font-semibold";
+                          }
+
                           return (
                             <tr
                               key={item.id}
-                              className={`transition-colors ${
-                                isCheapest
-                                  ? "bg-[#dcfce7]/75 text-[#166534] font-semibold"
-                                  : "hover:bg-[#f9fafb]"
-                              }`}
+                              className={`transition-colors ${rowClass}`}
                             >
                               {/* Nome do Produto */}
                               <td className="py-4 px-6">
                                 <div className="flex flex-col gap-1">
                                   <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className={`font-semibold text-sm sm:text-base ${isCheapest ? "text-[#166534]" : "text-[#111827]"}`}>
+                                    <span className={`font-semibold text-sm sm:text-base ${
+                                      isPrimaryWinner
+                                        ? ordenarPor === "preco"
+                                          ? "text-[#166534]"
+                                          : "text-[#5b21b6]"
+                                        : "text-[#111827]"
+                                    }`}>
                                       {item.nome}
                                     </span>
                                     {isCheapest && (
                                       <span className="inline-block py-0.5 px-1.5 text-[10px] font-bold bg-[#166534]/10 text-[#166534] rounded">
-                                        MELHOR PREÇO
+                                        💸 MELHOR PREÇO
+                                      </span>
+                                    )}
+                                    {isFewestPills && (
+                                      <span className="inline-block py-0.5 px-1.5 text-[10px] font-bold bg-[#5b21b6]/10 text-[#5b21b6] rounded">
+                                        💊 FÁCIL ADM. (MENOS COMPR.)
                                       </span>
                                     )}
                                   </div>
 
-                                  <span className={`text-xs mt-0.5 block ${isCheapest ? "text-[#166534]/80" : "text-[#6b7280]"}`}>
+                                  <span className={`text-xs mt-0.5 block ${
+                                    isPrimaryWinner
+                                      ? ordenarPor === "preco"
+                                        ? "text-[#166534]/80"
+                                        : "text-[#5b21b6]/80"
+                                      : "text-[#6b7280]"
+                                  }`}>
                                     {item.pesoTratado} kg por {item.tipo === "Comprimido" ? "comprimido" : "unidade"} • Embalagem: {item.qtdComprimidosCaixa} {item.tipo === "Comprimido" ? "comp." : "unid."} ({formatarMoeda(item.precoCaixa)})
                                   </span>
 
@@ -945,13 +1022,25 @@ export default function App() {
                               {/* Quantidade Calculada */}
                               <td className="py-4 px-4 text-right">
                                 <div className="flex flex-col items-end">
-                                  <span className={`text-[11px] font-semibold ${isCheapest ? "text-[#166534]/80" : "text-neutral-500"}`}>
+                                  <span className={`text-[11px] font-semibold ${
+                                    isPrimaryWinner
+                                      ? ordenarPor === "preco"
+                                        ? "text-[#166534]/80"
+                                        : "text-[#5b21b6]/80"
+                                      : "text-neutral-500"
+                                  }`}>
                                     Dose p/ adm: <span className="font-mono font-bold">{formatarNumero(item.quantidade)}</span> {item.tipo === "Comprimido" ? "comp." : "unid."}
                                   </span>
                                   <span className="font-mono font-bold text-sm sm:text-base mt-0.5">
                                     Total: {formatarNumero(item.quantidadeTotal)} {item.tipo === "Comprimido" ? "comp." : "unid."}
                                   </span>
-                                  <span className={`text-[10px] font-semibold ${isCheapest ? "text-[#166534]/80" : "text-[#6b7280]"}`}>
+                                  <span className={`text-[10px] font-semibold ${
+                                    isPrimaryWinner
+                                      ? ordenarPor === "preco"
+                                        ? "text-[#166534]/80"
+                                        : "text-[#5b21b6]/80"
+                                      : "text-[#6b7280]"
+                                  }`}>
                                     {item.caixas} {item.caixas === 1 ? "caixa" : "caixas"}
                                   </span>
                                 </div>
@@ -971,12 +1060,24 @@ export default function App() {
                                         </span>
                                       </div>
                                       <div className="flex flex-col items-end leading-none">
-                                        <span className="text-[9px] text-emerald-600 uppercase tracking-wider font-mono font-bold">
+                                        <span className={`text-[9px] uppercase tracking-wider font-mono font-bold ${
+                                          isPrimaryWinner && ordenarPor === "preco" ? "text-emerald-700" : "text-emerald-600"
+                                        }`}>
                                           Valor Com Desconto
                                         </span>
                                         <div className="flex items-center justify-end gap-1 mt-0.5">
-                                          {isCheapest && <CheckCircle2 className="w-3.5 h-3.5 text-[#166534] flex-shrink-0" />}
-                                          <span className="font-mono font-bold text-sm sm:text-base text-[#166534]">
+                                          {isPrimaryWinner && (
+                                            <CheckCircle2 className={`w-3.5 h-3.5 flex-shrink-0 ${
+                                              ordenarPor === "preco" ? "text-[#166534]" : "text-[#5b21b6]"
+                                            }`} />
+                                          )}
+                                          <span className={`font-mono font-bold text-sm sm:text-base ${
+                                            isPrimaryWinner
+                                              ? ordenarPor === "preco"
+                                                ? "text-[#166534]"
+                                                : "text-[#5b21b6]"
+                                              : "text-[#111827]"
+                                          }`}>
                                             {formatarMoeda(item.precoTotal)}
                                           </span>
                                         </div>
@@ -988,8 +1089,18 @@ export default function App() {
                                   ) : (
                                     <div className="flex flex-col items-end justify-center">
                                       <div className="flex items-center justify-end gap-1.5">
-                                        {isCheapest && <CheckCircle2 className="w-4 h-4 text-[#166534] flex-shrink-0" />}
-                                        <span className="font-mono font-bold text-base">
+                                        {isPrimaryWinner && (
+                                          <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${
+                                            ordenarPor === "preco" ? "text-[#166534]" : "text-[#5b21b6]"
+                                          }`} />
+                                        )}
+                                        <span className={`font-mono font-bold text-base ${
+                                          isPrimaryWinner
+                                            ? ordenarPor === "preco"
+                                              ? "text-[#166534]"
+                                              : "text-[#5b21b6]"
+                                            : "text-[#111827]"
+                                        }`}>
                                           {formatarMoeda(item.precoTotal)}
                                         </span>
                                       </div>
@@ -1030,7 +1141,7 @@ export default function App() {
                     <span className="text-xs font-bold text-[#6b7280] uppercase tracking-wider font-mono">Tabela de Consulta de Preço de Caixas</span>
                   </div>
                   <div className="divide-y divide-[#e5e7eb] text-left">
-                    {medicamentos.map((m) => (
+                    {medicamentosOrdenados.map((m) => (
                       <div key={m.id} className="p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs hover:bg-neutral-50/50">
                         <div className="flex flex-col text-left gap-1">
                           <div className="flex flex-wrap items-center gap-1.5">
@@ -1442,7 +1553,7 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#e5e7eb]">
-                          {medicamentos.map((m) => (
+                          {medicamentosOrdenados.map((m) => (
                             <tr key={m.id} className="hover:bg-neutral-50/50">
                               <td className="py-3 px-4">
                                 <div className="flex flex-col gap-1 text-left">
