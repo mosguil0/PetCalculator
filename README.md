@@ -40,7 +40,7 @@ npm run dev
 Após iniciar o servidor, o Vite exibirá no terminal o endereço de acesso, por exemplo:
 
 ```text
-Local:   http://localhost:3000
+Local: http://localhost:3000
 ```
 
 ---
