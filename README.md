@@ -37,10 +37,10 @@ npm install
 npm run dev
 ```
 
-A aplicação ficará disponível em:
+Após iniciar o servidor, o Vite exibirá no terminal o endereço de acesso, por exemplo:
 
-```
-http://localhost:5173
+```text
+Local:   http://localhost:3000
 ```
 
 ---
